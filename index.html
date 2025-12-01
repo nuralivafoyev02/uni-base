@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniBase | Talabalar Ekotizimi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        primary: '#4F46E5',
+                        secondary: '#10B981',
+                        dark: '#0F172A'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Animatsiyalar */
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c7c7c7; border-radius: 4px; }
+        .spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid #fff; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+
+    <div id="toast-container" class="fixed top-5 right-5 z-[1000000000] flex flex-col gap-3"></div>
+
+    <nav class="fixed w-full z-40 top-0 start-0 border-b border-gray-200 bg-white/80 backdrop-blur-md transition-all">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between p-4">
+            <a href="#" class="flex items-center space-x-2">
+                <div class="bg-primary text-white p-1.5 rounded-lg">
+                    <i data-lucide="library" class="w-6 h-6"></i>
+                </div>
+                <span class="self-center text-xl font-bold whitespace-nowrap text-dark">UniBase</span>
+            </a>
+            
+            <div class="flex items-center md:order-2 space-x-3 md:space-x-4">
+                <div id="auth-loading" class="animate-pulse h-9 w-24 bg-gray-200 rounded-lg"></div>
+                
+                <div id="guest-view" class="hidden flex gap-2">
+                    <button onclick="openModal('login-modal')" class="text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 font-medium rounded-lg text-sm px-5 py-2.5">Kirish</button>
+                    <button onclick="openModal('register-modal')" class="text-white bg-primary hover:bg-indigo-700 font-medium rounded-lg text-sm px-5 py-2.5 shadow-lg">Ro'yxatdan o'tish</button>
+                </div>
+
+                <div id="user-view" class="hidden flex items-center gap-4 relative">
+                    <button onclick="openModal('upload-modal')" class="hidden md:flex items-center gap-2 text-white bg-secondary hover:bg-emerald-600 font-medium rounded-lg text-sm px-4 py-2 shadow-lg transition-all">
+                        <i data-lucide="upload-cloud" class="w-4 h-4"></i> Yuklash (+1)
+                    </button>
+                    
+                    <div class="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-full border border-gray-200">
+                        <i data-lucide="trophy" class="w-4 h-4 text-yellow-500"></i>
+                        <span id="user-points" class="font-bold text-sm text-gray-700">0</span>
+                    </div>
+                    
+                    <div class="relative">
+                        <button onclick="toggleDropdown()" class="flex items-center focus:outline-none">
+                            <img id="user-avatar" class="w-10 h-10 rounded-full border-2 border-white shadow-sm bg-gray-300" src="" alt="User">
+                        </button>
+                        <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-50 origin-top-right">
+                            <div class="px-4 py-3 text-sm text-gray-900 border-b bg-gray-50 rounded-t-lg">
+                                <div class="font-bold">Mening hisobim</div>
+                                <div id="user-email-display" class="font-medium truncate text-gray-500 text-xs">...</div>
+                            </div>
+                            <ul class="py-2 text-sm text-gray-700">
+                                <li id="admin-link" class="hidden">
+                                    <a href="#" onclick="showAdminPanel()" class="block px-4 py-2 hover:bg-red-50 text-red-600 font-semibold flex items-center gap-2">
+                                        <i data-lucide="shield-alert" class="w-4 h-4"></i> Admin Panel
+                                    </a>
+                                </li>
+                                <li id="public-link" class="hidden">
+                                    <a href="#" onclick="showPublicPanel()" class="block px-4 py-2 hover:bg-gray-100 flex items-center gap-2">
+                                        <i data-lucide="layout-grid" class="w-4 h-4"></i> Asosiy Sahifa
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="#" onclick="logoutUser()" class="block px-4 py-2 hover:bg-gray-100 text-gray-700">Chiqish</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto pt-24 px-4 pb-10">
+        <div class="text-center mb-12 animate-fade-in-up">
+            <h1 class="mb-4 text-4xl font-extrabold tracking-tight leading-none text-gray-900 md:text-5xl lg:text-6xl">
+                Bilim ulashilsa — <span class="text-primary">ko'payadi.</span>
+            </h1>
+            <p class="mb-8 text-lg font-normal text-gray-500 lg:text-xl sm:px-16 xl:px-48">
+                O'zbekiston talabalari uchun yagona ochiq bilimlar bazasi.
+            </p>
+            
+            <div class="flex flex-wrap justify-center gap-2 mt-6" id="category-buttons">
+                <button onclick="setCategory('all')" class="cat-btn px-4 py-1.5 rounded-full text-sm font-medium bg-primary text-white shadow-md transition-all">Barchasi</button>
+                <button onclick="setCategory('math')" class="cat-btn px-4 py-1.5 rounded-full text-sm font-medium bg-white text-gray-600 border border-gray-200 hover:border-primary hover:text-primary transition-all">Matematika</button>
+                <button onclick="setCategory('programming')" class="cat-btn px-4 py-1.5 rounded-full text-sm font-medium bg-white text-gray-600 border border-gray-200 hover:border-primary hover:text-primary transition-all">Dasturlash</button>
+                <button onclick="setCategory('english')" class="cat-btn px-4 py-1.5 rounded-full text-sm font-medium bg-white text-gray-600 border border-gray-200 hover:border-primary hover:text-primary transition-all">Ingliz tili</button>
+            </div>
+        </div>
+
+        <div id="content-area">
+            <div class="flex items-center justify-between mb-6">
+                <h2 id="section-title" class="text-2xl font-bold text-gray-900">So'nggi materiallar</h2>
+            </div>
+
+            <div id="loader" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            <div id="materials-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden"></div>
+            <div id="empty-state" class="hidden text-center py-20">
+                <div class="bg-indigo-50 w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4">
+                    <i data-lucide="folder-open" class="w-10 h-10 text-indigo-400"></i>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900">Hozircha fayllar yo'q</h3>
+            </div>
+        </div>
+    </main>
+
+    <div id="upload-modal" class="fixed inset-0 z-50 hidden">
+        <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" onclick="closeModal('upload-modal')"></div>
+        <div class="fixed inset-0 z-10 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 relative">
+                <button onclick="closeModal('upload-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
+                <h3 class="text-xl font-bold mb-4">Fayl yuklash</h3>
+                <form id="upload-form" class="space-y-4">
+                    <input type="text" id="file-title" required class="w-full rounded-lg border border-gray-300 p-2.5 outline-none focus:border-primary" placeholder="Mavzu nomi">
+                    <select id="file-category" class="w-full rounded-lg border border-gray-300 p-2.5 outline-none focus:border-primary">
+                        <option value="math">Oliy Matematika</option>
+                        <option value="programming">Dasturlash</option>
+                        <option value="english">Ingliz tili</option>
+                    </select>
+                    <div class="flex items-center justify-center w-full">
+                        <label id="drop-area" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                            <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                <i data-lucide="cloud-upload" class="w-8 h-8 text-gray-400 mb-2"></i>
+                                <p class="text-sm text-gray-500" id="file-name-display">Faylni tanlang</p>
+                            </div>
+                            <input id="dropzone-file" type="file" class="hidden" required />
+                        </label>
+                    </div>
+                    <button type="submit" id="upload-btn-text" class="w-full text-white bg-primary hover:bg-indigo-700 font-medium rounded-lg text-sm px-5 py-3 flex justify-center items-center gap-2">Yuklash</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="login-modal" class="fixed inset-0 z-50 hidden">
+        <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" onclick="closeModal('login-modal')"></div>
+        <div class="fixed inset-0 z-10 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 relative">
+                <button onclick="closeModal('login-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
+                <h2 class="text-2xl font-bold text-center mb-6">Kirish</h2>
+                <div class="space-y-4">
+                    <input type="email" id="login-email" placeholder="Email" class="w-full p-3 rounded-lg border border-gray-300">
+                    <input type="password" id="login-password" placeholder="Parol" class="w-full p-3 rounded-lg border border-gray-300">
+                    <button onclick="handleLogin()" class="w-full bg-primary text-white p-3 rounded-lg font-bold hover:bg-indigo-700">Kirish</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="register-modal" class="fixed inset-0 z-50 hidden">
+        <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" onclick="closeModal('register-modal')"></div>
+        <div class="fixed inset-0 z-10 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 relative">
+                <button onclick="closeModal('register-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i data-lucide="x"></i></button>
+                <h2 class="text-2xl font-bold text-center mb-6">Ro'yxatdan o'tish</h2>
+                <div class="space-y-4">
+                    <input type="email" id="reg-email" placeholder="Email" class="w-full p-3 rounded-lg border border-gray-300">
+                    <input type="password" id="reg-password" placeholder="Parol" class="w-full p-3 rounded-lg border border-gray-300">
+                    <button onclick="handleRegister()" class="w-full bg-secondary text-white p-3 rounded-lg font-bold hover:bg-emerald-600">Yaratish</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
