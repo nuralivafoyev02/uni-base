@@ -16,29 +16,29 @@
     <meta property="og:type" content="website">
     
     <meta name="google-site-verification" content="EZOaTnmdmYG4evKhqERmFsed3QCYPbmvH5CHezM49xM" />
-    
+
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>   
 
     <script>
         tailwind.config = {
-            darkMode: 'class', // Dark mode yoqildi
+            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: { sans: ['Inter', 'sans-serif'] },
                     colors: {
                         primary: '#4F46E5',
                         secondary: '#10B981',
-                        dark: '#0F172A' // Bu endi dark mode uchun asosiy fon
+                        dark: '#0F172A'
                     }
                 }
             }
         }
     </script>
     <style>
-        /* Animatsiyalar */
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
         ::-webkit-scrollbar { width: 8px; }
@@ -47,8 +47,6 @@
         .dark ::-webkit-scrollbar-thumb { background: #475569; }
         .spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid #fff; width: 20px; height: 20px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        /* Dark mode transitions */
         body, .bg-white, .text-gray-900 { transition: background-color 0.3s, color 0.3s; }
     </style>
 </head>
@@ -63,7 +61,7 @@
                     <i data-lucide="library" class="w-6 h-6"></i>
                 </div>
                 <span class="self-center text-xl font-bold whitespace-nowrap text-dark dark:text-white">UniBase</span>
-                <p class="text-[10px] text-gray-600 dark:text-gray-400 absolute -bottom-[4px] left-10">Version 2.0</p>
+                <p class="text-[10px] text-gray-600 dark:text-gray-400 absolute -bottom-[4px] left-10">Version 3.0</p>
             </a>
             
             <div class="flex items-center md:order-2 space-x-3 md:space-x-4">
@@ -79,6 +77,10 @@
                 </div>
 
                 <div id="user-view" class="hidden flex items-center gap-4 relative">
+                    <button onclick="openLeaderboard()" class="hidden sm:flex items-center gap-2 text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-slate-700 font-medium rounded-lg text-sm px-4 py-2 transition-all">
+                        <i data-lucide="bar-chart" class="w-4 h-4 text-yellow-500"></i> <span class="hidden lg:inline">Reyting</span>
+                    </button>
+
                     <button onclick="openModal('upload-modal')" class="hidden md:flex items-center gap-2 text-white bg-secondary hover:bg-emerald-600 font-medium rounded-lg text-sm px-4 py-2 shadow-lg transition-all">
                         <i data-lucide="upload-cloud" class="w-4 h-4"></i> <span class="hidden lg:inline">Yuklash (+1)</span>
                     </button>
@@ -146,8 +148,71 @@
         </div>
 
         <div id="content-area">
+            <div id="admin-nav" class="hidden mb-8 overflow-x-auto">
+                <div class="flex space-x-2 border-b border-gray-200 dark:border-gray-700 pb-2">
+                    <button onclick="switchAdminTab('dashboard')" class="admin-tab-btn active px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-primary text-white" data-tab="dashboard">
+                        <i data-lucide="bar-chart-2" class="w-4 h-4 inline mr-2"></i>Statistika
+                    </button>
+                    <button onclick="switchAdminTab('pending')" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors" data-tab="pending">
+                        <i data-lucide="file-check" class="w-4 h-4 inline mr-2"></i>Fayllar
+                    </button>
+                    <button onclick="switchAdminTab('users')" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors" data-tab="users">
+                        <i data-lucide="users" class="w-4 h-4 inline mr-2"></i>Foydalanuvchilar
+                    </button>
+                    <button onclick="switchAdminTab('logs')" class="admin-tab-btn px-4 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors" data-tab="logs">
+                        <i data-lucide="history" class="w-4 h-4 inline mr-2"></i>Tarix
+                    </button>
+                </div>
+            </div>
+
             <div class="flex items-center justify-between mb-6">
                 <h2 id="section-title" class="text-2xl font-bold text-gray-900 dark:text-white">So'nggi materiallar</h2>
+            </div>
+
+            <div id="admin-view-dashboard" class="hidden admin-view space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <div class="text-gray-500 dark:text-gray-400 text-sm font-medium mb-1">Jami Foydalanuvchilar</div>
+                        <div class="text-3xl font-bold text-gray-900 dark:text-white" id="stat-users">0</div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <div class="text-gray-500 dark:text-gray-400 text-sm font-medium mb-1">Jami Fayllar</div>
+                        <div class="text-3xl font-bold text-primary" id="stat-files">0</div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <div class="text-gray-500 dark:text-gray-400 text-sm font-medium mb-1">Kutilayotganlar</div>
+                        <div class="text-3xl font-bold text-yellow-500" id="stat-pending">0</div>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <h3 class="text-lg font-bold mb-4 text-gray-900 dark:text-white">Fayllar Statistikasi</h3>
+                    <div class="h-64 w-full">
+                        <canvas id="statsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div id="admin-view-users" class="hidden admin-view">
+                <div class="overflow-x-auto bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-slate-700 dark:text-gray-400">
+                            <tr>
+                                <th class="px-6 py-3">Email</th>
+                                <th class="px-6 py-3">Ball</th>
+                                <th class="px-6 py-3">Role</th>
+                                <th class="px-6 py-3">Status</th>
+                                <th class="px-6 py-3 text-right">Amallar</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="admin-view-logs" class="hidden admin-view">
+                <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                    <ul id="logs-list" class="divide-y divide-gray-200 dark:divide-gray-700"></ul>
+                </div>
             </div>
 
             <div id="loader" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
@@ -157,11 +222,38 @@
                 <div class="bg-indigo-50 dark:bg-slate-800 w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-4">
                     <i data-lucide="folder-search" class="w-10 h-10 text-indigo-400"></i>
                 </div>
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white">Hech narsa topilmadi</h3>
-                <p class="text-gray-500 dark:text-gray-400">Boshqa so'z bilan qidirib ko'ring yoki kategoriya o'zgartiring.</p>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">Ma'lumot topilmadi</h3>
             </div>
         </div>
     </main>
+
+    <div id="leaderboard-modal" class="fixed inset-0 z-50 hidden">
+        <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" onclick="closeModal('leaderboard-modal')"></div>
+        <div class="fixed inset-0 z-10 flex items-center justify-center p-4">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6 relative overflow-hidden">
+                <button onclick="closeModal('leaderboard-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><i data-lucide="x"></i></button>
+                
+                <div class="text-center mb-6">
+                    <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 mb-3">
+                        <i data-lucide="crown" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">UniBase Karyera</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Eng faol talabalar reytingi</p>
+                </div>
+
+                <div class="overflow-y-auto max-h-[400px] pr-2 space-y-2" id="leaderboard-list">
+                    <div class="flex justify-center py-4"><div class="spinner border-primary"></div></div>
+                </div>
+                
+                <div class="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <div class="flex items-center justify-between p-3 bg-indigo-50 dark:bg-slate-700 rounded-xl">
+                        <span class="text-sm font-medium text-indigo-900 dark:text-indigo-200">Sizning ballaringiz:</span>
+                        <span class="text-lg font-bold text-primary" id="my-points-display">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div id="upload-modal" class="fixed inset-0 z-50 hidden">
         <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" onclick="closeModal('upload-modal')"></div>
